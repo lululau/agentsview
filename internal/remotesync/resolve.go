@@ -152,6 +152,20 @@ func ResolveTargets(cfg config.Config) (TargetSet, error) {
 				}
 				continue
 			}
+			if def.Type == parser.AgentZCode {
+				root, targetFiles, err := resolveZcodeTarget(dir)
+				if err != nil {
+					return TargetSet{}, err
+				}
+				// The default dirs ".zcode/cli/db" and ".zcode/cli"
+				// normalize to the same database directory; advertise it
+				// once so the manifest carries a single root.
+				if root != "" && !slices.Contains(dirs[def.Type], root) {
+					dirs[def.Type] = append(dirs[def.Type], root)
+					files[def.Type] = append(files[def.Type], targetFiles...)
+				}
+				continue
+			}
 			if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 				continue
 			}
@@ -506,7 +520,11 @@ func resolveAgentHasOnDiskSource(def parser.AgentDef) bool {
 	if def.RemoteSyncExcluded {
 		return false
 	}
-	if !def.FileBased {
+	// ZCode keeps FileBased=false because the sync engine routes it as a
+	// provider-authoritative database source, but its SQLite database is an
+	// on-disk source the snapshot pipeline exports. The flag must not
+	// exclude it here.
+	if !def.FileBased && def.Type != parser.AgentZCode {
 		return false
 	}
 	switch parser.ProviderMigrationModes()[def.Type] {
@@ -817,6 +835,30 @@ func resolveZedTarget(root string) (string, []string, error) {
 		return "", nil, err
 	}
 	return root, []string{dbPath}, nil
+}
+
+// resolveZcodeTarget narrows a configured ZCode root to the directory
+// holding db.sqlite and advertises that database as a curated snapshot
+// file, mirroring resolveZedTarget. The provider normalizes configured
+// roots the same way: a root named "db" is used as-is, otherwise the
+// database lives under the root's "db" subdirectory, so a stray
+// top-level db.sqlite never wins over the established db/db.sqlite
+// layout.
+func resolveZcodeTarget(root string) (string, []string, error) {
+	clean := filepath.Clean(root)
+	if filepath.Base(clean) != "db" {
+		clean = filepath.Join(clean, "db")
+	}
+	ok, err := curatedRoot(clean)
+	if err != nil || !ok {
+		return "", nil, err
+	}
+	dbPath := filepath.Join(clean, parser.ZCodeDBName)
+	ok, err = curatedFileOrMissing(clean, dbPath)
+	if err != nil || !ok {
+		return "", nil, err
+	}
+	return clean, []string{dbPath}, nil
 }
 
 // curatedFileOrMissing retains a selected leaf through a deletion race so the
@@ -1275,6 +1317,8 @@ func sessionFileShape(agent parser.AgentType, root, rel string) bool {
 		return false
 	case parser.AgentZed:
 		return filepath.ToSlash(filepath.Clean(rel)) == parser.ZedThreadsDBRelPath
+	case parser.AgentZCode:
+		return filepath.ToSlash(filepath.Clean(rel)) == parser.ZCodeDBName
 	default:
 		return rooCodeSessionFileShape(rel)
 	}

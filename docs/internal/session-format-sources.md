@@ -2630,7 +2630,12 @@ schemas keep their existing ordering behavior.
   through capture, object storage, PostgreSQL job leases, and the hosted
   worker to its projection boundary in
   `TestRawCapturedSourcesReachHostedWorker`. No producer schema change is
-  inferred.
+  inferred. Remote sync advertises `db/db.sqlite` as a curated snapshot
+  file and exports it through the SQLite online-backup pipeline in
+  `internal/remotesync/sqlite_snapshot.go`, so a live WAL writer transfers
+  as one standalone database and mirror-side virtual session paths remap
+  under the mirrored root, as checked by the ZCode tests in
+  `internal/remotesync/zcode_snapshot_test.go`.
 
 ## Goose (`goose`)
 

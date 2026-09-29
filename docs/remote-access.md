@@ -247,7 +247,7 @@ sessions never enter the manifest, the archive, or the mirror:
 - **Zed** exports `threads/threads.db` as a consistent SQLite snapshot taken
   with the online backup API, so committed write-ahead-log data arrives as one
   standalone database without `-wal` or `-shm` sidecars. Hermes state databases
-  use the same snapshot mechanism.
+  and **ZCode** `db/db.sqlite` use the same snapshot mechanism.
 - **RooCode** and **Kilo Legacy** export only their discovered per-task session
   files, **Poolside** narrows its root to `trajectories/`, and **Windsurf**
   exports the sanitized copy described above.

@@ -165,8 +165,8 @@ func hermesStateDBTargets(targets TargetSet) []string {
 }
 
 // sqliteSnapshotTargets returns the set of databases (Hermes state.db,
-// Zed threads.db) whose manifest and archive entries are consistent
-// snapshots rather than raw file copies.
+// Zed threads.db, ZCode db.sqlite) whose manifest and archive entries
+// are consistent snapshots rather than raw file copies.
 func sqliteSnapshotTargets(targets TargetSet) map[string]struct{} {
 	out := make(map[string]struct{})
 	for _, path := range hermesStateDBTargets(targets) {
@@ -174,6 +174,11 @@ func sqliteSnapshotTargets(targets TargetSet) map[string]struct{} {
 	}
 	for _, path := range targets.Files[parser.AgentZed] {
 		if filepath.Base(filepath.Clean(path)) == "threads.db" {
+			out[filepath.Clean(path)] = struct{}{}
+		}
+	}
+	for _, path := range targets.Files[parser.AgentZCode] {
+		if filepath.Base(filepath.Clean(path)) == parser.ZCodeDBName {
 			out[filepath.Clean(path)] = struct{}{}
 		}
 	}
@@ -192,13 +197,13 @@ func sqliteSnapshotPaths(stateDB string) []string {
 func sqliteSnapshotForArchivePath(path string) (string, bool) {
 	path = filepath.Clean(path)
 	switch filepath.Base(path) {
-	case "state.db", "threads.db":
+	case "state.db", "threads.db", parser.ZCodeDBName:
 		return path, true
-	case "state.db-wal", "threads.db-wal":
+	case "state.db-wal", "threads.db-wal", parser.ZCodeDBName + "-wal":
 		return strings.TrimSuffix(path, "-wal"), true
-	case "state.db-shm", "threads.db-shm":
+	case "state.db-shm", "threads.db-shm", parser.ZCodeDBName + "-shm":
 		return strings.TrimSuffix(path, "-shm"), true
-	case "state.db-journal", "threads.db-journal":
+	case "state.db-journal", "threads.db-journal", parser.ZCodeDBName + "-journal":
 		return strings.TrimSuffix(path, "-journal"), true
 	default:
 		return "", false

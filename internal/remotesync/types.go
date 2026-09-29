@@ -136,7 +136,7 @@ func verbatimFileScopedAgent(agent parser.AgentType) bool {
 // verbatim agents; the manifest advertises the snapshot's logical
 // identity instead of the raw file's.
 func snapshotFileScopedAgent(agent parser.AgentType) bool {
-	return agent == parser.AgentZed
+	return agent == parser.AgentZed || agent == parser.AgentZCode
 }
 
 // emptyFileScopeAgent reports whether an agent's root stays
