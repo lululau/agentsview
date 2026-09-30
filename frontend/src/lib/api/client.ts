@@ -3,6 +3,8 @@ import { createParser, type EventSourceMessage } from "eventsource-parser";
 import type {
   SyncProgress,
   SyncSyncStats as SyncStats,
+  RemoteSyncRequest,
+  RemoteSyncResponse,
   DbInsight as Insight,
   GenerateInsightRequest,
 } from "./generated/index.js";
@@ -19,6 +21,11 @@ import { ApiError, getAuthToken, getGeneratedBase, isRemoteConnection } from "./
 export interface SyncHandle {
   abort: () => void;
   done: Promise<SyncStats>;
+}
+
+export interface RemoteSyncHandle {
+  abort: () => void;
+  done: Promise<RemoteSyncResponse>;
 }
 
 export async function consumeEvents<T>(
@@ -53,13 +60,13 @@ export async function consumeEvents<T>(
   }
 }
 
-function streamSyncSSE(
+function streamSyncSSE<T>(
   request: (signal: AbortSignal) => Promise<Response>,
   onProgress?: (p: SyncProgress) => void,
-): SyncHandle {
+): { abort: () => void; done: Promise<T> } {
   const controller = new AbortController();
   const done = request(controller.signal).then((response) =>
-    consumeEvents<SyncStats>(
+    consumeEvents<T>(
       response,
       ({ event, data }) => {
         if (event === "progress") onProgress?.(JSON.parse(data));
@@ -73,11 +80,30 @@ function streamSyncSSE(
 }
 
 export function triggerSync(onProgress?: (p: SyncProgress) => void): SyncHandle {
-  return streamSyncSSE((signal) => SyncService.postApiV1Sync(undefined, { signal }), onProgress);
+  return streamSyncSSE<SyncStats>(
+    (signal) => SyncService.postApiV1Sync(undefined, { signal }),
+    onProgress,
+  );
 }
 
 export function triggerResync(onProgress?: (p: SyncProgress) => void): SyncHandle {
-  return streamSyncSSE((signal) => SyncService.postApiV1Resync({ signal }), onProgress);
+  return streamSyncSSE<SyncStats>((signal) => SyncService.postApiV1Resync({ signal }), onProgress);
+}
+
+export function triggerRemoteSync(
+  body: RemoteSyncRequest,
+  onProgress?: (p: SyncProgress) => void,
+): RemoteSyncHandle {
+  return streamSyncSSE<RemoteSyncResponse>(
+    (signal) =>
+      SyncService.postApiV1SyncRemotes(body, {
+        signal,
+        // The remotes endpoint only streams progress events to clients
+        // that ask for text/event-stream; otherwise it answers plain JSON.
+        headers: { Accept: "text/event-stream" },
+      }),
+    onProgress,
+  );
 }
 
 /** Event payload for /api/v1/events data_changed frames. */

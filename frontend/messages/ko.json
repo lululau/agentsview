@@ -90,6 +90,9 @@
   "header_actions_refresh_data_shortcut": "데이터 새로고침 (r)",
   "header_actions_sync_sessions": "세션 동기화",
   "header_actions_sync_sessions_shortcut": "세션 동기화 (r)",
+  "header_actions_sync_scope": "동기화 범위 선택",
+  "header_actions_sync_all_hosts": "전체 동기화(로컬 + 원격)",
+  "header_actions_sync_host": "{host}만 동기화",
   "header_actions_refresh": "새로고침",
   "header_actions_sync": "동기화",
   "header_actions_import_unavailable": "읽기 전용 모드에서는 가져오기를 사용할 수 없습니다",
@@ -130,6 +133,17 @@
   "status_bar_perf": "성능",
   "status_bar_remote_unreachable_title": "원격 서버에 연결할 수 없습니다. 설정을 열어 URL, 토큰을 확인하거나 연결을 해제하세요.",
   "status_bar_remote_unreachable": "원격 서버에 연결할 수 없음",
+  "status_bar_remote_sync_error": "원격 동기화 실패",
+  "status_bar_remote_sync_failures": [
+    {
+      "declarations": ["input count", "input countLabel", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{countLabel}개 원격 호스트 동기화 실패",
+        "countPlural=other": "{countLabel}개 원격 호스트 동기화 실패"
+      }
+    }
+  ],
   "status_bar_sync_not_ready": "동기화 준비되지 않음",
   "status_bar_zoom_out": "축소 ({shortcut} -)",
   "status_bar_reset_zoom": "확대/축소 재설정 ({shortcut} 0)",

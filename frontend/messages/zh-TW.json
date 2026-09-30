@@ -90,6 +90,9 @@
   "header_actions_refresh_data_shortcut": "重整資料 (r)",
   "header_actions_sync_sessions": "同步對話",
   "header_actions_sync_sessions_shortcut": "同步對話 (r)",
+  "header_actions_sync_scope": "選擇同步範圍",
+  "header_actions_sync_all_hosts": "全部同步(本機 + 遠端)",
+  "header_actions_sync_host": "僅同步 {host}",
   "header_actions_refresh": "重新整理",
   "header_actions_sync": "同步",
   "header_actions_import_unavailable": "唯讀模式下無法匯入",
@@ -130,6 +133,14 @@
   "status_bar_perf": "效能",
   "status_bar_remote_unreachable_title": "無法連線遠端伺服器。開啟設定檢查 URL、token 或中斷連線。",
   "status_bar_remote_unreachable": "遠端伺服器不可達",
+  "status_bar_remote_sync_error": "遠端同步失敗",
+  "status_bar_remote_sync_failures": [
+    {
+      "declarations": ["input count", "input countLabel", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": { "countPlural=other": "{countLabel} 個遠端主機同步失敗" }
+    }
+  ],
   "status_bar_sync_not_ready": "同步未就緒",
   "status_bar_zoom_out": "縮小 ({shortcut} -)",
   "status_bar_reset_zoom": "重置縮放 ({shortcut} 0)",

@@ -1,11 +1,19 @@
 import type { EventSource } from "eventsource";
-import { triggerResync, triggerSync, watchSession, type SyncHandle } from "../api/client.js";
+import {
+  triggerRemoteSync,
+  triggerResync,
+  triggerSync,
+  watchSession,
+  type SyncHandle,
+} from "../api/client.js";
 import { MetadataService, SyncService } from "../api/generated/index";
 import { ApiError, isRemoteConnection } from "../api/runtime.js";
 import { events } from "./events.svelte.js";
 import type {
   SyncProgress,
   SyncSyncStats as SyncStats,
+  RemoteSyncFailure,
+  RemoteSyncHostInfo,
   DbStats as Stats,
   VersionInfo,
 } from "../api/generated/index.js";
@@ -49,6 +57,16 @@ class SyncStore {
   backendDegradedMessage: string | null = $state(null);
   updateAvailable: boolean = $state(false);
   latestVersion: string | null = $state(null);
+  // Configured remote sync hosts, fetched once from the server. Empty on
+  // standalone deployments, which hides the scoped remote-sync controls.
+  remoteHosts: RemoteSyncHostInfo[] = $state([]);
+  // Per-host failures from the last remote sync, or null when it succeeded
+  // (or no remote sync ran yet). Shown in the status bar until dismissed
+  // or replaced by the next sync.
+  remoteSyncFailures: RemoteSyncFailure[] | null = $state(null);
+  // Whole-request failure of the last remote sync, such as a rejected
+  // host list. Kept separate from per-host failures because no host ran.
+  remoteSyncError: string | null = $state(null);
   readonly buildCommit: string = import.meta.env.VITE_BUILD_COMMIT;
   readonly isDesktop: boolean =
     typeof window !== "undefined" && new URLSearchParams(window.location.search).has("desktop");
@@ -228,7 +246,55 @@ class SyncStore {
       void this.refreshReadOnly(onComplete);
       return;
     }
+    this.clearRemoteSyncIssues();
     this.runSync(triggerSync, onComplete);
+  }
+
+  triggerRemoteSync(
+    hosts: RemoteSyncHostInfo[],
+    includeLocal: boolean,
+    onComplete?: () => void,
+  ): boolean {
+    if (this.readOnly || this.syncing) return false;
+    this.clearRemoteSyncIssues();
+    return this.runHandle(
+      () =>
+        triggerRemoteSync(
+          {
+            full: false,
+            include_local: includeLocal,
+            hosts: hosts.map((h) => ({ host: h.host, user: h.user, port: h.port })),
+          },
+          (p: SyncProgress) => {
+            this.progress = p;
+          },
+        ),
+      (response) => {
+        if (response.local_stats) this.lastSyncStats = response.local_stats;
+        if (response.failures && response.failures.length > 0) {
+          this.remoteSyncFailures = response.failures;
+        }
+        void this.loadStats();
+      },
+      onComplete,
+      (err: Error) => {
+        this.remoteSyncError = err.message;
+      },
+    );
+  }
+
+  clearRemoteSyncIssues() {
+    this.remoteSyncFailures = null;
+    this.remoteSyncError = null;
+  }
+
+  async loadRemoteHosts() {
+    try {
+      const response = await SyncService.getApiV1SyncRemotes();
+      this.remoteHosts = response.hosts ?? [];
+    } catch (error) {
+      console.warn("Failed to load remote sync hosts:", error);
+    }
   }
 
   triggerResync(onComplete?: () => void, onError?: (err: Error) => void): boolean {
@@ -261,6 +327,29 @@ class SyncStore {
     onComplete?: () => void,
     onError?: (err: Error) => void,
   ): boolean {
+    return this.runHandle(
+      () =>
+        syncFn((p: SyncProgress) => {
+          this.progress = p;
+        }),
+      (stats: SyncStats) => {
+        this.lastSyncStats = stats;
+        void this.loadStats();
+      },
+      onComplete,
+      onError,
+    );
+  }
+
+  // Shared skeleton for foreground syncs: one sync at a time, progress into
+  // the status bar, then refresh stats and hydrate the server's authoritative
+  // status timestamp. `settle` applies the result to store state.
+  private runHandle<T>(
+    start: () => { abort: () => void; done: Promise<T> },
+    settle: (result: T) => void,
+    onComplete?: () => void,
+    onError?: (err: Error) => void,
+  ): boolean {
     if (this.syncing) return false;
     this.syncing = true;
     this.progress = null;
@@ -271,21 +360,18 @@ class SyncStore {
       this.progress = null;
     };
 
-    const handle = syncFn((p: SyncProgress) => {
-      this.progress = p;
-    });
+    const handle = start();
 
     handle.done
-      .then((s: SyncStats) => {
-        this.lastSyncStats = s;
-        this.loadStats();
+      .then((result: T) => {
+        settle(result);
         finalizeSync();
         this.notifySyncComplete();
         // Hydrate the authoritative server timestamp.
         // pendingHydration suppresses the notification so
         // the poll path won't double-fire.
         this.pendingHydration = true;
-        this.loadStatus();
+        void this.loadStatus();
         onComplete?.();
       })
       .catch((err: unknown) => {

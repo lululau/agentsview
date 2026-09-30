@@ -21,7 +21,9 @@ The dashboard header includes:
   to filter by name; each entry shows its session count. Navigate with arrow
   keys, select with Enter, and close with Escape.
 - **Search bar** — opens the command palette (`Cmd+K`)
-- **Sync button** — triggers a manual sync of session files
+- **Sync button** — triggers a manual sync of session files; with
+  [remote hosts](/docs/remote-access/) configured, its dropdown caret also
+  syncs all or selected remote hosts
 - **Theme toggle** — switch between light and dark mode
 - **Import button** — opens the [Chat Import](/docs/chat-import/) dialog for
   importing Claude.ai or ChatGPT conversations
@@ -1317,6 +1319,14 @@ in real time. The sync status is shown in the status bar:
 
 Press `r` to trigger a manual sync. The sync button in the header shows a
 spinning animation while syncing.
+
+When the server has [remote hosts](/docs/remote-access/) configured, the sync
+button grows a dropdown caret. It offers **Sync all (local + remotes)**, which
+runs a local sync and pulls every configured remote host, and one **Sync
+\<host\> only** entry per remote host. The caret is hidden on standalone
+servers and read-only backends. If some remote hosts fail, the status bar
+shows a red failure count; hover it for the per-host errors and click it to
+dismiss.
 
 The status bar also shows a version mismatch warning (red) if the frontend and
 backend versions differ. Click it to reload.

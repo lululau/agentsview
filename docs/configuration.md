@@ -1668,6 +1668,26 @@ Check sync status:
 curl http://127.0.0.1:8080/api/v1/sync/status
 ```
 
+Trigger a remote-host pull from the API. List the configured hosts first
+(tokens are never returned):
+
+```bash
+curl http://127.0.0.1:8080/api/v1/sync/remotes
+```
+
+Then sync them — `include_local` also runs a local sync first, matching the
+`agentsview sync` CLI behavior:
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/v1/sync/remotes \
+  -H 'Content-Type: application/json' \
+  -d '{"full": false, "include_local": true, "hosts": [{"host": "m6"}]}'
+```
+
+Hosts must match entries in `remote_hosts`; the server uses the stored URL and
+token. The response is `local_stats` plus a `failures` array when individual
+hosts fail.
+
 ## Privacy and Telemetry
 
 By default, all session data stays on your local machine in SQLite. Normal

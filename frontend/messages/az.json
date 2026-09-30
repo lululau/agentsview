@@ -92,6 +92,9 @@
   "header_actions_refresh_data_shortcut": "Məlumatları yenilə (r)",
   "header_actions_sync_sessions": "Sessiyaları sinxronlaşdır",
   "header_actions_sync_sessions_shortcut": "Sessiyaları sinxronlaşdır (r)",
+  "header_actions_sync_scope": "Sinxronlaşdırma əhatəsini seçin",
+  "header_actions_sync_all_hosts": "Hamısını sinxronlaşdır (yerli + uzaq)",
+  "header_actions_sync_host": "Yalnız {host} sinxronlaşdır",
   "header_actions_refresh": "Yenilə",
   "header_actions_sync": "Sinxronlaşdır",
   "header_actions_import_unavailable": "Yalnız oxumaq üçün nəzərdə tutulmuş rejimdə idxal əlçatan deyil",
@@ -135,6 +138,17 @@
   "status_bar_perf": "Performans",
   "status_bar_remote_unreachable_title": "Uzaq serverlə əlaqə qurmaq mümkün deyil. URL-i və tokeni yoxlamaq və ya əlaqəni kəsmək üçün parametrləri açın.",
   "status_bar_remote_unreachable": "Uzaq server əlçatan deyil",
+  "status_bar_remote_sync_error": "uzaq sinxronlaşdırma alınmadı",
+  "status_bar_remote_sync_failures": [
+    {
+      "declarations": ["input count", "input countLabel", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{countLabel} uzaq host sinxronlaşdırıla bilmədi",
+        "countPlural=other": "{countLabel} uzaq host sinxronlaşdırıla bilmədi"
+      }
+    }
+  ],
   "status_bar_sync_not_ready": "Sinxronlaşdırma hazır deyil",
   "status_bar_zoom_out": "Miqyası kiçilt ({shortcut} -)",
   "status_bar_reset_zoom": "Miqyası sıfırla ({shortcut} 0)",

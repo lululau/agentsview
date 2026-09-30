@@ -8,7 +8,9 @@ import type {
 const api = vi.hoisted(() => ({
   triggerSync: vi.fn(),
   triggerResync: vi.fn(),
+  triggerRemoteSync: vi.fn(),
   watchSession: vi.fn(),
+  getRemoteSyncHosts: vi.fn(),
   getSyncStatus: vi.fn(),
   getStats: vi.fn(),
   getVersion: vi.fn(),
@@ -29,6 +31,7 @@ const api = vi.hoisted(() => ({
 vi.mock("../api/client.js", () => ({
   triggerSync: api.triggerSync,
   triggerResync: api.triggerResync,
+  triggerRemoteSync: api.triggerRemoteSync,
   watchSession: api.watchSession,
 }));
 
@@ -47,6 +50,7 @@ vi.mock("../api/generated/index", () => ({
   },
   SyncService: {
     getApiV1SyncStatus: vi.fn(() => api.getSyncStatus()),
+    getApiV1SyncRemotes: vi.fn(() => api.getRemoteSyncHosts()),
   },
 }));
 
@@ -403,6 +407,155 @@ describe("SyncStore.triggerResync", () => {
         message: "Full resync is unavailable for read-only backends.",
       }),
     );
+  });
+});
+
+const REMOTE_HOSTS = [{ host: "m6", user: "liu", port: 22 }, { host: "m4" }];
+
+function mockRemoteSyncSuccess(response: Record<string, unknown>): void {
+  vi.mocked(api.triggerRemoteSync).mockReturnValue({
+    abort: vi.fn(),
+    done: Promise.resolve(response),
+  });
+  vi.mocked(api.getStats).mockResolvedValue({
+    session_count: 8,
+    message_count: 100,
+    project_count: 3,
+    machine_count: 1,
+    earliest_session: null,
+  });
+  vi.mocked(api.getSyncStatus).mockResolvedValue({
+    last_sync: "2024-01-01T00:00:00Z",
+    stats: MOCK_STATS,
+  });
+}
+
+describe("SyncStore.triggerRemoteSync", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset singleton state between tests.
+    const s = sync as unknown as Record<string, unknown>;
+    s.syncing = false;
+    s.progress = null;
+    s.serverVersion = null;
+    s.remoteSyncFailures = null;
+    s.remoteSyncError = null;
+    s.syncCompleteListeners = [];
+  });
+
+  it("sends the selected hosts with the local-sync flag", () => {
+    mockRemoteSyncSuccess({});
+
+    const started = sync.triggerRemoteSync([{ host: "m6", user: "liu", port: 22 }], true);
+
+    expect(started).toBe(true);
+    expect(api.triggerRemoteSync).toHaveBeenCalledWith(
+      { full: false, include_local: true, hosts: [{ host: "m6", user: "liu", port: 22 }] },
+      expect.any(Function),
+    );
+  });
+
+  it("records per-host failures from a finished sync", async () => {
+    mockRemoteSyncSuccess({
+      failures: [{ host: { host: "m6" }, error: "connection refused" }],
+    });
+
+    const onComplete = vi.fn();
+    sync.triggerRemoteSync(REMOTE_HOSTS as never, false, onComplete);
+
+    await vi.waitFor(() => {
+      expect(onComplete).toHaveBeenCalled();
+    });
+    expect(sync.syncing).toBe(false);
+    expect(sync.remoteSyncFailures).toHaveLength(1);
+    const failure = sync.remoteSyncFailures?.[0];
+    expect(failure?.host.host).toBe("m6");
+    expect(failure?.error).toBe("connection refused");
+    expect(sync.remoteSyncError).toBeNull();
+  });
+
+  it("records a top-level error when the stream fails", async () => {
+    vi.mocked(api.triggerRemoteSync).mockReturnValue({
+      abort: vi.fn(),
+      done: Promise.reject(new Error("host not configured")),
+    });
+
+    sync.triggerRemoteSync(REMOTE_HOSTS as never, false);
+
+    await vi.waitFor(() => {
+      expect(sync.remoteSyncError).toBe("host not configured");
+    });
+    expect(sync.syncing).toBe(false);
+    expect(sync.remoteSyncFailures).toBeNull();
+  });
+
+  it("returns false when already syncing", () => {
+    vi.mocked(api.triggerRemoteSync).mockReturnValue({
+      abort: vi.fn(),
+      done: new Promise(() => {}),
+    });
+    const first = sync.triggerRemoteSync(REMOTE_HOSTS as never, true);
+    expect(first).toBe(true);
+
+    const second = sync.triggerRemoteSync(REMOTE_HOSTS as never, true);
+    expect(second).toBe(false);
+  });
+
+  it("returns false for read-only backends", () => {
+    const s = sync as unknown as Record<string, unknown>;
+    s.serverVersion = {
+      build_date: "",
+      commit: "unknown",
+      read_only: true,
+      version: "dev",
+    };
+
+    const started = sync.triggerRemoteSync(REMOTE_HOSTS as never, true);
+
+    expect(started).toBe(false);
+    expect(api.triggerRemoteSync).not.toHaveBeenCalled();
+  });
+
+  it("clears previous issues when a new remote sync starts", async () => {
+    mockRemoteSyncSuccess({
+      failures: [{ host: { host: "m6" }, error: "connection refused" }],
+    });
+    sync.triggerRemoteSync(REMOTE_HOSTS as never, false);
+    await vi.waitFor(() => {
+      expect(sync.remoteSyncFailures).toHaveLength(1);
+    });
+
+    mockRemoteSyncSuccess({});
+    sync.triggerRemoteSync(REMOTE_HOSTS as never, false);
+    expect(sync.remoteSyncFailures).toBeNull();
+  });
+});
+
+describe("SyncStore.loadRemoteHosts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const s = sync as unknown as Record<string, unknown>;
+    s.remoteHosts = [];
+  });
+
+  it("stores the configured hosts", async () => {
+    vi.mocked(api.getRemoteSyncHosts).mockResolvedValue({
+      hosts: [{ host: "m6", transport: "http", url: "http://m6:8001" }],
+    });
+
+    await sync.loadRemoteHosts();
+
+    expect(sync.remoteHosts).toEqual([{ host: "m6", transport: "http", url: "http://m6:8001" }]);
+  });
+
+  it("keeps the previous list when the request fails", async () => {
+    const s = sync as unknown as Record<string, unknown>;
+    s.remoteHosts = [{ host: "m4" }];
+    vi.mocked(api.getRemoteSyncHosts).mockRejectedValue(new Error("offline"));
+
+    await sync.loadRemoteHosts();
+
+    expect(sync.remoteHosts).toEqual([{ host: "m4" }]);
   });
 });
 

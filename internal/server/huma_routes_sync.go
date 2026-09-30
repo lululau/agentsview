@@ -30,6 +30,8 @@ func (s *Server) registerSyncRoutes() {
 	s.stream(group, http.MethodPost, "/sync/remotes",
 		"Sync remote hosts", s.humaSyncRemotes, streamJSONResponseSchema("RemoteSyncResponse"),
 	)
+	s.get(group, "/sync/remotes",
+		"List configured remote sync hosts", s.humaListRemoteSyncHosts)
 	s.postLong(group, "/sessions/sync", "Sync a session", s.humaSyncSession)
 }
 
@@ -68,6 +70,40 @@ func requireProcessingComplete(stats syncpkg.SyncStats) error {
 type remoteSyncFailure struct {
 	Host config.RemoteHost `json:"host"`
 	Err  string            `json:"error"`
+}
+
+// remoteSyncHostInfo is the configured-host view exposed to API clients so
+// they can offer scoped remote syncs. It deliberately omits Token: sync
+// credentials must stay server-side.
+type remoteSyncHostInfo struct {
+	Host      string `json:"host"`
+	Transport string `json:"transport,omitempty"`
+	User      string `json:"user,omitempty"`
+	Port      int    `json:"port,omitempty"`
+	URL       string `json:"url,omitempty"`
+}
+
+type remoteSyncHostsResponse struct {
+	Hosts []remoteSyncHostInfo `json:"hosts"`
+}
+
+func (s *Server) humaListRemoteSyncHosts(
+	_ context.Context,
+	_ *emptyInput,
+) (*jsonOutput[remoteSyncHostsResponse], error) {
+	hosts := make([]remoteSyncHostInfo, 0, len(s.cfg.RemoteHosts))
+	for _, h := range s.cfg.RemoteHosts {
+		hosts = append(hosts, remoteSyncHostInfo{
+			Host:      h.Host,
+			Transport: remoteSyncTransportName(h.Transport),
+			User:      h.User,
+			Port:      h.Port,
+			URL:       h.URL,
+		})
+	}
+	return &jsonOutput[remoteSyncHostsResponse]{
+		Body: remoteSyncHostsResponse{Hosts: hosts},
+	}, nil
 }
 
 type remoteSyncResponse struct {

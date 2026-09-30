@@ -3,6 +3,7 @@
  */
 import type {
   PostApiV1SyncParams,
+  RemoteSyncHostsResponse,
   RemoteSyncRequest,
   ServiceSessionDetail,
   ServiceSyncInput,
@@ -90,6 +91,22 @@ export const postApiV1Sync = async (
   return orvalRequest<Response>(getPostApiV1SyncUrl(params), {
     ...options,
     method: "POST",
+  });
+};
+
+export const getGetApiV1SyncRemotesUrl = () => {
+  return `/api/v1/sync/remotes`;
+};
+
+/**
+ * @summary List configured remote sync hosts
+ */
+export const getApiV1SyncRemotes = async (
+  options?: Parameters<typeof orvalFetch>[1],
+): Promise<RemoteSyncHostsResponse> => {
+  return orvalFetch<RemoteSyncHostsResponse>(getGetApiV1SyncRemotesUrl(), {
+    ...options,
+    method: "GET",
   });
 };
 

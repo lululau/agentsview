@@ -378,6 +378,8 @@ export * from "./remotesyncArchiveRequestDirs.ts";
 export * from "./remotesyncArchiveRequestFiles.ts";
 export * from "./remotesyncArchiveRequestProviderExtraFiles.ts";
 export * from "./remoteSyncFailure.ts";
+export * from "./remoteSyncHostInfo.ts";
+export * from "./remoteSyncHostsResponse.ts";
 export * from "./remotesyncManifest.ts";
 export * from "./remotesyncManifestEntry.ts";
 export * from "./remoteSyncRequest.ts";

@@ -90,6 +90,9 @@
   "header_actions_refresh_data_shortcut": "刷新数据 (r)",
   "header_actions_sync_sessions": "同步会话",
   "header_actions_sync_sessions_shortcut": "同步会话 (r)",
+  "header_actions_sync_scope": "选择同步范围",
+  "header_actions_sync_all_hosts": "全部同步(本地 + 远程)",
+  "header_actions_sync_host": "仅同步 {host}",
   "header_actions_refresh": "刷新",
   "header_actions_sync": "同步",
   "header_actions_import_unavailable": "只读模式下无法导入",
@@ -130,6 +133,14 @@
   "status_bar_perf": "性能",
   "status_bar_remote_unreachable_title": "无法连接远程服务器。打开设置检查 URL、token 或断开连接。",
   "status_bar_remote_unreachable": "远程服务器不可达",
+  "status_bar_remote_sync_error": "远程同步失败",
+  "status_bar_remote_sync_failures": [
+    {
+      "declarations": ["input count", "input countLabel", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": { "countPlural=other": "{countLabel} 个远程主机同步失败" }
+    }
+  ],
   "status_bar_sync_not_ready": "同步未就绪",
   "status_bar_zoom_out": "缩小 ({shortcut} -)",
   "status_bar_reset_zoom": "重置缩放 ({shortcut} 0)",

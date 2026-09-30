@@ -13,6 +13,7 @@
     ArrowDownWideNarrowIcon,
     ArrowUpNarrowWideIcon,
     CheckIcon,
+    ChevronDownIcon,
     CloudUploadIcon,
     CopyIcon,
     DatabaseBackupIcon,
@@ -25,6 +26,7 @@
     LogsIcon,
     LayoutListIcon,
     MenuIcon,
+    MonitorIcon,
     MoonIcon,
     MoreHorizontalIcon,
     SearchIcon,
@@ -44,6 +46,7 @@
     downloadExport,
     getMarkdownExportUrl,
   } from "../../api/client.js";
+  import type { RemoteSyncHostInfo } from "../../api/generated/index.js";
   import { copyToClipboard } from "../../utils/clipboard.js";
   import ProjectTypeahead from "./ProjectTypeahead.svelte";
   import ImportModal from "../import/ImportModal.svelte";
@@ -55,6 +58,7 @@
   let showBlockFilter = $state(false);
   let showExportMenu = $state(false);
   let showPublishMenu = $state(false);
+  let showSyncMenu = $state(false);
   let showOverflow = $state(false);
   let copiedMarkdownLink = $state(false);
   let copiedMarkdownLinkTimer:
@@ -76,6 +80,14 @@
     $state(undefined);
   let overflowDropRef: HTMLDivElement | undefined =
     $state(undefined);
+  let syncCaretRef: HTMLButtonElement | undefined =
+    $state(undefined);
+  let syncDropRef: HTMLDivElement | undefined =
+    $state(undefined);
+
+  // Remote sync hosts rarely change; fetch once so the scope caret can
+  // render (or stay hidden on standalone deployments) without a poll.
+  void sync.loadRemoteHosts();
 
   /** True while TopBar has collapsed the nav tabs into its dropdown —
    * side-region snippets read it to drop their labels. */
@@ -187,6 +199,29 @@
   const activeSessionFilePath = $derived(
     sessions.activeSession?.file_path ?? "",
   );
+  const showSyncScopeControl = $derived(
+    sync.remoteHosts.length > 0 && !sync.readOnly,
+  );
+
+  function syncAllHosts() {
+    showSyncMenu = false;
+    sync.triggerRemoteSync(sync.remoteHosts, true);
+  }
+
+  function syncSingleHost(host: RemoteSyncHostInfo) {
+    showSyncMenu = false;
+    sync.triggerRemoteSync([host], false);
+  }
+
+  function syncHostLabel(host: RemoteSyncHostInfo): string {
+    return host.user ? `${host.user}@${host.host}` : host.host;
+  }
+
+  function syncHostTitle(host: RemoteSyncHostInfo): string {
+    if (host.url) return `${host.host} — ${host.url}`;
+    const identity = syncHostLabel(host);
+    return host.port ? `${identity}:${host.port}` : identity;
+  }
 
   // Close block filter dropdown on outside click
   $effect(() => {
@@ -241,6 +276,27 @@
       )
         return;
       showPublishMenu = false;
+    }
+    document.addEventListener("click", onClickOutside, true);
+    return () =>
+      document.removeEventListener(
+        "click",
+        onClickOutside,
+        true,
+      );
+  });
+
+  // Close sync scope dropdown on outside click
+  $effect(() => {
+    if (!showSyncMenu) return;
+    function onClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        syncCaretRef?.contains(target) ||
+        syncDropRef?.contains(target)
+      )
+        return;
+      showSyncMenu = false;
     }
     document.addEventListener("click", onClickOutside, true);
     return () =>
@@ -642,21 +698,59 @@
       </div>
     {/if}
 
-    <button
-      class="header-btn sync-btn"
-      class:syncing={sync.syncing}
-      onclick={() => sync.triggerSync()}
-      disabled={sync.syncing}
-      title={sync.readOnly ? m.header_actions_refresh_data_shortcut() : m.header_actions_sync_sessions_shortcut()}
-      aria-label={sync.readOnly ? m.header_actions_refresh_data() : m.header_actions_sync_sessions()}
-    >
-      {#if sync.syncing}
-        <span class="sync-spinner" aria-hidden="true"><Spinner size={13} /></span>
-      {:else}
-        <DatabaseBackupIcon size="14" strokeWidth="2" aria-hidden="true" />
+    <div class="sync-wrap">
+      <button
+        class="header-btn sync-btn"
+        class:syncing={sync.syncing}
+        onclick={() => sync.triggerSync()}
+        disabled={sync.syncing}
+        title={sync.readOnly ? m.header_actions_refresh_data_shortcut() : m.header_actions_sync_sessions_shortcut()}
+        aria-label={sync.readOnly ? m.header_actions_refresh_data() : m.header_actions_sync_sessions()}
+      >
+        {#if sync.syncing}
+          <span class="sync-spinner" aria-hidden="true"><Spinner size={13} /></span>
+        {:else}
+          <DatabaseBackupIcon size="14" strokeWidth="2" aria-hidden="true" />
+        {/if}
+        <span class="sync-label" class:collapsed={navCollapsed}>{sync.readOnly ? m.header_actions_refresh() : m.header_actions_sync()}</span>
+      </button>
+      {#if showSyncScopeControl}
+        <button
+          class="header-btn sync-caret"
+          bind:this={syncCaretRef}
+          onclick={() => {
+            showSyncMenu = !showSyncMenu;
+            showExportMenu = false;
+            showPublishMenu = false;
+            showOverflow = false;
+          }}
+          disabled={sync.syncing}
+          title={m.header_actions_sync_scope()}
+          aria-label={m.header_actions_sync_scope()}
+          aria-expanded={showSyncMenu}
+        >
+          <ChevronDownIcon size="12" strokeWidth="2.4" aria-hidden="true" />
+        </button>
+        {#if showSyncMenu}
+          <div class="export-dropdown kit-popover-card" bind:this={syncDropRef}>
+            <button class="overflow-item" onclick={syncAllHosts}>
+              <DatabaseBackupIcon size="13" strokeWidth="2" aria-hidden="true" />
+              <span>{m.header_actions_sync_all_hosts()}</span>
+            </button>
+            {#each sync.remoteHosts as host}
+              <button
+                class="overflow-item"
+                title={syncHostTitle(host)}
+                onclick={() => syncSingleHost(host)}
+              >
+                <MonitorIcon size="13" strokeWidth="2" aria-hidden="true" />
+                <span>{m.header_actions_sync_host({ host: syncHostLabel(host) })}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
       {/if}
-      <span class="sync-label" class:collapsed={navCollapsed}>{sync.readOnly ? m.header_actions_refresh() : m.header_actions_sync()}</span>
-    </button>
+    </div>
 
     <button
       class="import-btn"
@@ -1023,6 +1117,17 @@
     padding: 0 9px;
     font-size: 11px;
     font-weight: 500;
+  }
+
+  .sync-wrap {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  .sync-caret {
+    width: 18px;
+    margin-left: -6px;
   }
 
   /* Labels drop while the nav tabs are collapsed, keeping the side

@@ -65,6 +65,12 @@
     sync.lastSync ? formatTimestamp(sync.lastSync) : null,
   );
 
+  let remoteSyncFailureTitle = $derived.by(() => {
+    const failures = sync.remoteSyncFailures;
+    if (!failures) return null;
+    return failures.map((f) => `${f.host.host}: ${f.error}`).join("\n");
+  });
+
   onMount(() => {
     const interval = window.setInterval(() => {
       relativeTimeTick = Date.now();
@@ -124,6 +130,28 @@
         title={sync.backendDegradedMessage ?? m.status_bar_sync_not_ready()}
       >
         {m.status_bar_sync_not_ready()}
+      </button>
+      <span class="sep">&middot;</span>
+    {/if}
+    {#if sync.remoteSyncError}
+      <button
+        class="remote-warn"
+        onclick={() => sync.clearRemoteSyncIssues()}
+        title={sync.remoteSyncError}
+      >
+        {m.status_bar_remote_sync_error()}
+      </button>
+      <span class="sep">&middot;</span>
+    {:else if sync.remoteSyncFailures}
+      <button
+        class="remote-warn"
+        onclick={() => sync.clearRemoteSyncIssues()}
+        title={remoteSyncFailureTitle ?? undefined}
+      >
+        {m.status_bar_remote_sync_failures({
+          count: sync.remoteSyncFailures.length,
+          countLabel: formatNumber(sync.remoteSyncFailures.length),
+        })}
       </button>
       <span class="sep">&middot;</span>
     {/if}

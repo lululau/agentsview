@@ -19,6 +19,8 @@ describe("StatusBar", () => {
     sync.remoteUnreachable = false;
     sync.backendDegraded = false;
     sync.backendDegradedMessage = null;
+    sync.remoteSyncFailures = null;
+    sync.remoteSyncError = null;
   });
 
   afterEach(() => {
@@ -31,6 +33,8 @@ describe("StatusBar", () => {
     sync.remoteUnreachable = false;
     sync.backendDegraded = false;
     sync.backendDegradedMessage = null;
+    sync.remoteSyncFailures = null;
+    sync.remoteSyncError = null;
     sync.progress = null;
     sync.syncing = false;
   });
@@ -87,6 +91,51 @@ describe("StatusBar", () => {
     sync.backendDegraded = false;
     await tick();
     expect(document.body.textContent).not.toContain("sync not ready");
+
+    unmount(component);
+  });
+
+  it("shows per-host remote sync failures until dismissed", async () => {
+    sync.remoteSyncFailures = [
+      { host: { host: "m6" }, error: "connection refused" },
+      { host: { host: "m4" }, error: "timeout" },
+    ];
+    const component = mount(StatusBar, {
+      target: document.body,
+    });
+    await tick();
+
+    expect(document.body.textContent).toContain("2 remote hosts failed");
+    const warn = document.querySelector(".remote-warn");
+    expect(warn?.getAttribute("title")).toContain("m6: connection refused");
+    expect(warn?.getAttribute("title")).toContain("m4: timeout");
+
+    warn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await tick();
+    expect(sync.remoteSyncFailures).toBeNull();
+    expect(document.body.textContent).not.toContain("remote hosts failed");
+
+    unmount(component);
+  });
+
+  it("shows a top-level remote sync error until dismissed", async () => {
+    sync.remoteSyncError = "not available in remote mode";
+    const component = mount(StatusBar, {
+      target: document.body,
+    });
+    await tick();
+
+    expect(document.body.textContent).toContain("remote sync failed");
+    expect(document.querySelector(".remote-warn")?.getAttribute("title")).toBe(
+      "not available in remote mode",
+    );
+
+    document
+      .querySelector(".remote-warn")
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await tick();
+    expect(sync.remoteSyncError).toBeNull();
+    expect(document.body.textContent).not.toContain("remote sync failed");
 
     unmount(component);
   });

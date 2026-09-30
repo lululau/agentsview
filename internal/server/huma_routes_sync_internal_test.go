@@ -2172,6 +2172,48 @@ func TestHumaSyncRemotesRejectsOptionShapedHost(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "host must not begin with '-'")
 }
 
+func TestHumaListRemoteSyncHosts(t *testing.T) {
+	f := newSyncRouteFixture(t, withRemoteHosts(
+		config.RemoteHost{
+			Host:      "m6",
+			Transport: config.RemoteTransportHTTP,
+			URL:       "http://m6.example:8001",
+			Token:     "secret-m6",
+		},
+		config.RemoteHost{Host: "m4", User: "deploy", Port: 2222},
+	))
+
+	w := serveJSON(t, f.handler, http.MethodGet, "/api/v1/sync/remotes", nil)
+
+	require.Equal(t, http.StatusOK, w.Code, "body: %s", w.Body.String())
+	body := w.Body.String()
+	assert.NotContains(t, body, "secret-m6", "token value must not leak")
+	assert.NotContains(t, body, "\"token\"", "token field must not be serialized")
+	response := decodeRecorder[remoteSyncHostsResponse](t, w)
+	require.Len(t, response.Hosts, 2)
+	assert.Equal(t, remoteSyncHostInfo{
+		Host:      "m6",
+		Transport: "http",
+		URL:       "http://m6.example:8001",
+	}, response.Hosts[0])
+	assert.Equal(t, remoteSyncHostInfo{
+		Host:      "m4",
+		Transport: "ssh",
+		User:      "deploy",
+		Port:      2222,
+	}, response.Hosts[1])
+}
+
+func TestHumaListRemoteSyncHostsEmptyConfig(t *testing.T) {
+	f := newSyncRouteFixture(t)
+
+	w := serveJSON(t, f.handler, http.MethodGet, "/api/v1/sync/remotes", nil)
+
+	require.Equal(t, http.StatusOK, w.Code, "body: %s", w.Body.String())
+	response := decodeRecorder[remoteSyncHostsResponse](t, w)
+	assert.Empty(t, response.Hosts)
+}
+
 func TestHumaSyncRemotesRejectsNonLocalUnconfiguredHost(t *testing.T) {
 	srv := testServer(t, 30)
 	w := postRemoteSync(t, srv.Handler(),

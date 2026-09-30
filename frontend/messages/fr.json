@@ -90,6 +90,9 @@
   "header_actions_refresh_data_shortcut": "Actualiser les données (r)",
   "header_actions_sync_sessions": "Synchroniser les sessions",
   "header_actions_sync_sessions_shortcut": "Synchroniser les sessions (r)",
+  "header_actions_sync_scope": "Choisir la portée de synchronisation",
+  "header_actions_sync_all_hosts": "Tout synchroniser (local + distants)",
+  "header_actions_sync_host": "Synchroniser uniquement {host}",
   "header_actions_refresh": "Actualiser",
   "header_actions_sync": "Synchroniser",
   "header_actions_import_unavailable": "Import indisponible en mode lecture seule",
@@ -133,6 +136,17 @@
   "status_bar_perf": "Perf",
   "status_bar_remote_unreachable_title": "Impossible de joindre le serveur distant. Ouvrez les paramètres pour vérifier l'URL, le token, ou vous déconnecter.",
   "status_bar_remote_unreachable": "serveur distant injoignable",
+  "status_bar_remote_sync_error": "échec de la synchronisation distante",
+  "status_bar_remote_sync_failures": [
+    {
+      "declarations": ["input count", "input countLabel", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{countLabel} hôte distant en échec",
+        "countPlural=other": "{countLabel} hôtes distants en échec"
+      }
+    }
+  ],
   "status_bar_sync_not_ready": "synchronisation non prête",
   "status_bar_zoom_out": "Zoom arrière ({shortcut} -)",
   "status_bar_reset_zoom": "Réinitialiser le zoom ({shortcut} 0)",

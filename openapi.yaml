@@ -5418,6 +5418,33 @@ components:
         - host
         - error
       type: object
+    RemoteSyncHostInfo:
+      additionalProperties: false
+      properties:
+        host:
+          type: string
+        port:
+          format: int64
+          type: integer
+        transport:
+          type: string
+        url:
+          type: string
+        user:
+          type: string
+      required:
+        - host
+      type: object
+    RemoteSyncHostsResponse:
+      additionalProperties: false
+      properties:
+        hosts:
+          items:
+            $ref: "#/components/schemas/RemoteSyncHostInfo"
+          type: array
+      required:
+        - hosts
+      type: object
     RemoteSyncRequest:
       additionalProperties: false
       properties:
@@ -20761,6 +20788,78 @@ paths:
       tags:
         - Sync
   /api/v1/sync/remotes:
+    get:
+      operationId: get-api-v1-sync-remotes
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteSyncHostsResponse"
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Conflict
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Internal Server Error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Not Implemented
+        "502":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Bad Gateway
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Service Unavailable
+        "504":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: Gateway Timeout
+      summary: List configured remote sync hosts
+      tags:
+        - Sync
     post:
       operationId: post-api-v1-sync-remotes
       requestBody:

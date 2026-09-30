@@ -90,6 +90,9 @@
   "header_actions_refresh_data_shortcut": "Refresh data (r)",
   "header_actions_sync_sessions": "Sync sessions",
   "header_actions_sync_sessions_shortcut": "Sync sessions (r)",
+  "header_actions_sync_scope": "Choose sync scope",
+  "header_actions_sync_all_hosts": "Sync all (local + remotes)",
+  "header_actions_sync_host": "Sync {host} only",
   "header_actions_refresh": "Refresh",
   "header_actions_sync": "Sync",
   "header_actions_import_unavailable": "Import unavailable in read-only mode",
@@ -133,6 +136,17 @@
   "status_bar_perf": "Perf",
   "status_bar_remote_unreachable_title": "Can't reach the remote server. Open settings to check the URL, token, or disconnect.",
   "status_bar_remote_unreachable": "remote server unreachable",
+  "status_bar_remote_sync_error": "remote sync failed",
+  "status_bar_remote_sync_failures": [
+    {
+      "declarations": ["input count", "input countLabel", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{countLabel} remote host failed",
+        "countPlural=other": "{countLabel} remote hosts failed"
+      }
+    }
+  ],
   "status_bar_sync_not_ready": "sync not ready",
   "status_bar_zoom_out": "Zoom out ({shortcut} -)",
   "status_bar_reset_zoom": "Reset zoom ({shortcut} 0)",
